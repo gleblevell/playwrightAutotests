@@ -28,17 +28,7 @@ jobs:
         id: playwright
         run: |
           echo "Running Playwright tests..."
-          set +e  # не прерываем шаг при ошибках
-          npx playwright test --reporter=json > results.json 2>&1
-          exit_code=$?
-          echo "Playwright exited with code $exit_code"
-          if [ ! -s results.json ]; then
-            echo "⚠️ results.json not created, creating empty placeholder."
-            echo "{}" > results.json
-          fi
-          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
-          exit 0
-        continue-on-error: true
+          npx playwright test --reporter=json > results.json
 
       - name: Debug results.json
         if: always()
