@@ -35,11 +35,9 @@ jobs:
         id: parse
         run: |
           echo "Parsing Playwright JSON results..."
-          # Подсчёт общего количества тестов
-          total=$(jq '[.. | objects | select(has("status"))] | length' results.json)
-          # Подсчёт прошедших тестов
-          passed=$(jq '[.. | objects | select(has("status")) | select(.status=="passed")] | length' results.json)
-          # Подсчёт упавших тестов
+          # Учитываем только уникальные тесты по titlePath (без дублей от ретраев/воркеров)
+          total=$(jq '[.. | objects | select(has("status")) | .titlePath | join(" > ")] | unique | length' results.json)
+          passed=$(jq '[.. | objects | select(has("status")) | select(.status=="passed") | .titlePath | join(" > ")] | unique | length' results.json)
           failed=$((total - passed))
           echo "✅ Passed: $passed / Total: $total / ❌ Failed: $failed"
           echo "passed=$passed" >> $GITHUB_OUTPUT
