@@ -28,15 +28,24 @@ jobs:
         id: playwright
         run: |
           echo "Running Playwright tests..."
-          # Сохраняем отчёт в JSON и не прерываем пайплайн при ошибках
-          npx playwright test --reporter=json > results.json || echo "⚠️ Tests failed (Playwright exited with error)"
+          set +e  # не прерываем шаг при ошибках
+          npx playwright test --reporter=json > results.json 2>&1
+          exit_code=$?
+          echo "Playwright exited with code $exit_code"
+          if [ ! -s results.json ]; then
+            echo "⚠️ results.json not created, creating empty placeholder."
+            echo "{}" > results.json
+          fi
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          exit 0
         continue-on-error: true
 
       - name: Debug results.json
         if: always()
         run: |
-          echo "Checking contents of results.json..."
-          cat results.json || echo "No results.json file found"
+          echo "=== results.json preview ==="
+          head -n 50 results.json || echo "No results.json found"
+          echo "============================"
 
       - name: Parse Playwright results
         id: parse
@@ -44,9 +53,8 @@ jobs:
         run: |
           echo "Parsing Playwright JSON results..."
 
-          # Проверка, существует ли и не пуст ли файл
-          if [ ! -s results.json ]; then
-            echo "⚠️ results.json not found or empty. Setting all counts to 0."
+          if ! jq empty results.json 2>/dev/null; then
+            echo "⚠️ Invalid JSON. Using 0 values."
             echo "passed=0" >> $GITHUB_OUTPUT
             echo "failed=0" >> $GITHUB_OUTPUT
             echo "total=0" >> $GITHUB_OUTPUT
@@ -58,7 +66,7 @@ jobs:
           failed=$((total - passed))
 
           echo "✅ Passed: $passed / Total: $total / ❌ Failed: $failed"
-          echo "passed=$passed" >> $GITHUB_OUTPUTg
+          echo "passed=$passed" >> $GITHUB_OUTPUT
           echo "failed=$failed" >> $GITHUB_OUTPUT
           echo "total=$total" >> $GITHUB_OUTPUT
 
@@ -75,7 +83,7 @@ jobs:
         with:
           payload: |
             {
-              "text": ":robot_face: *Playwright tests finished on branch* `${{ github.ref_name }}`\n*Status:* `${{ job.status }}`\n*Passed:* `${{ steps.parse.outputs.passed }}` / `${{ steps.parse.outputs.total }}`\n*Failed:* `${{ steps.parse.outputs.failed }}`",
+              "text": ":robot_face: *Playwright tests finished on branch* `${{ github.ref_name }}`\n*Status:* `${{ job.status }}`\n*Passed:* `${{ steps.parse.outputs.passed || 0 }}` / `${{ steps.parse.outputs.total || 0 }}`\n*Failed:* `${{ steps.parse.outputs.failed || 0 }}`",
               "attachments": [
                 {
                   "color": "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}",
