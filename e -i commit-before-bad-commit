@@ -1,0 +1,15 @@
+[33mcommit 1b70b2f29e567bc5f3a6dfd9a7599e6b3502d838[m
+Author: gleb onelevell <gleblevell@gmail.com>
+Date:   Sun Oct 19 20:22:11 2025 +0500
+
+    настроил вебхук для отправки уведомления в слак
+
+[1mdiff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml[m
+[1mindex 1adf2ce..098cba6 100644[m
+[1m--- a/.github/workflows/ci.yml[m
+[1m+++ b/.github/workflows/ci.yml[m
+[36m@@ -52,4 +52,4 @@[m [mjobs:[m
+               ][m
+             }[m
+         env:[m
+[31m-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}[m
