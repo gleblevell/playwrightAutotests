@@ -28,19 +28,37 @@ jobs:
         id: playwright
         run: |
           echo "Running Playwright tests..."
-          npx playwright test --reporter=json > results.json
+          # Сохраняем отчёт в JSON и не прерываем пайплайн при ошибках
+          npx playwright test --reporter=json > results.json || echo "⚠️ Tests failed (Playwright exited with error)"
         continue-on-error: true
+
+      - name: Debug results.json
+        if: always()
+        run: |
+          echo "Checking contents of results.json..."
+          cat results.json || echo "No results.json file found"
 
       - name: Parse Playwright results
         id: parse
+        if: always()
         run: |
           echo "Parsing Playwright JSON results..."
-          # Учитываем только уникальные тесты по titlePath (без дублей от ретраев/воркеров)
+
+          # Проверка, существует ли и не пуст ли файл
+          if [ ! -s results.json ]; then
+            echo "⚠️ results.json not found or empty. Setting all counts to 0."
+            echo "passed=0" >> $GITHUB_OUTPUT
+            echo "failed=0" >> $GITHUB_OUTPUT
+            echo "total=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           total=$(jq '[.. | objects | select(has("status")) | .titlePath | join(" > ")] | unique | length' results.json)
           passed=$(jq '[.. | objects | select(has("status")) | select(.status=="passed") | .titlePath | join(" > ")] | unique | length' results.json)
           failed=$((total - passed))
+
           echo "✅ Passed: $passed / Total: $total / ❌ Failed: $failed"
-          echo "passed=$passed" >> $GITHUB_OUTPUT
+          echo "passed=$passed" >> $GITHUB_OUTPUTg
           echo "failed=$failed" >> $GITHUB_OUTPUT
           echo "total=$total" >> $GITHUB_OUTPUT
 
@@ -57,11 +75,11 @@ jobs:
         with:
           payload: |
             {
-              "text": ":robot_face: *Playwright tests finished on branch* `${{ github.ref_name }}`\n*Status:* ${{ job.status }}\n*Passed:* ${{ steps.parse.outputs.passed }}/${{ steps.parse.outputs.total }}\n*Failed:* ${{ steps.parse.outputs.failed }}",
+              "text": ":robot_face: *Playwright tests finished on branch* `${{ github.ref_name }}`\n*Status:* `${{ job.status }}`\n*Passed:* `${{ steps.parse.outputs.passed }}` / `${{ steps.parse.outputs.total }}`\n*Failed:* `${{ steps.parse.outputs.failed }}`",
               "attachments": [
                 {
                   "color": "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}",
-                  "text": "HTML report: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  "text": "🔗 *HTML report:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View in GitHub Actions>"
                 }
               ]
             }
