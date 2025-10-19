@@ -27,15 +27,21 @@ jobs:
       - name: Run Playwright tests
         id: playwright
         run: |
+          echo "Running Playwright tests..."
           npx playwright test --reporter=json > results.json
         continue-on-error: true
 
       - name: Parse Playwright results
         id: parse
         run: |
-          passed=$(jq '[.suites[].tests[] | select(all(.results[]; .status=="passed"))] | length' results.json)
-          total=$(jq '[.suites[].tests[]] | length' results.json)
+          echo "Parsing Playwright JSON results..."
+          # Подсчёт общего количества тестов
+          total=$(jq '[.. | objects | select(has("status"))] | length' results.json)
+          # Подсчёт прошедших тестов
+          passed=$(jq '[.. | objects | select(has("status")) | select(.status=="passed")] | length' results.json)
+          # Подсчёт упавших тестов
           failed=$((total - passed))
+          echo "✅ Passed: $passed / Total: $total / ❌ Failed: $failed"
           echo "passed=$passed" >> $GITHUB_OUTPUT
           echo "failed=$failed" >> $GITHUB_OUTPUT
           echo "total=$total" >> $GITHUB_OUTPUT
