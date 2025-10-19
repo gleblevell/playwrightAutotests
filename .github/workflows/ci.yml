@@ -28,8 +28,14 @@ jobs:
         id: playwright
         run: |
           echo "Running Playwright tests..."
-          # Создаём корректный JSON даже если тесты падают
-          npx playwright test --reporter=json=results.json || true
+          # Запуск тестов и сохранение JSON отчёта
+          npx playwright test --reporter=json || true
+          # Берём JSON из папки playwright-report
+          if ls playwright-report/*.json 1> /dev/null 2>&1; then
+            cp playwright-report/*.json results.json
+          else
+            echo "{}" > results.json
+          fi
 
       - name: Debug results.json
         if: always()
@@ -44,7 +50,7 @@ jobs:
         run: |
           echo "Parsing Playwright JSON results..."
 
-          if [ ! -f results.json ] || ! jq empty results.json 2>/dev/null; then
+          if ! jq empty results.json 2>/dev/null; then
             echo "⚠️ Invalid or missing JSON. Using 0 values."
             echo "passed=0" >> $GITHUB_OUTPUT
             echo "failed=0" >> $GITHUB_OUTPUT
